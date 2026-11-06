@@ -6,26 +6,32 @@ from selenium.webdriver.support.ui import WebDriverWait
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
-        # Увеличили глобальное ожидание до 15 секунд для стабильности
         self.wait = WebDriverWait(driver, 15)
 
     def open(self, url):
         self.driver.get(url)
+
+    def find_element(self, locator):
+        return self.wait.until(EC.presence_of_element_located(locator))
+
+    def find_elements(self, locator):
+        return self.driver.find_elements(*locator)
 
     def click(self, locator):
         element = self.wait.until(EC.element_to_be_clickable(locator))
         try:
             element.click()
         except ElementClickInterceptedException:
-            self.driver.execute_script("arguments[0].click();", element)
+            self.execute_script("arguments[0].click();", element)
+
+    def click_js(self, locator):
+        element = self.wait.until(EC.presence_of_element_located(locator))
+        self.execute_script("arguments[0].click();", element)
 
     def send_keys(self, locator, text):
-        element = self.wait.until(EC.presence_of_element_located(locator))
+        element = self.wait.until(EC.visibility_of_element_located(locator))
         element.clear()
         element.send_keys(text)
-
-    def find_element(self, locator):
-        return self.wait.until(EC.presence_of_element_located(locator))
 
     def get_text(self, locator):
         return self.find_element(locator).text
@@ -44,5 +50,35 @@ class BasePage:
         except TimeoutException:
             return False
 
-    def wait_for_url(self, url_part, timeout=10):
-        return WebDriverWait(self.driver, timeout).until(EC.url_contains(url_part))
+    def wait_until_invisible(self, locator, timeout=15):
+        WebDriverWait(self.driver, timeout).until(EC.invisibility_of_element_located(locator))
+
+    def wait_until_visible(self, locator, timeout=15):
+        WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located(locator))
+
+    def wait_until_url_contains(self, url_part, timeout=15):
+        WebDriverWait(self.driver, timeout).until(EC.url_contains(url_part))
+
+    def wait_until_url_not_contains(self, url_part, timeout=15):
+        WebDriverWait(self.driver, timeout).until(lambda d: url_part not in d.current_url)
+
+    def wait_until_page_contains(self, text, timeout=15):
+        WebDriverWait(self.driver, timeout).until(lambda d: text in d.page_source)
+
+    def execute_script(self, script, *args):
+        return self.driver.execute_script(script, *args)
+
+    def get_current_url(self):
+        return self.driver.current_url
+
+    def refresh_page(self):
+        self.driver.refresh()
+
+    def get_page_source(self):
+        return self.driver.page_source
+
+    def is_page_contains_text(self, text):
+        return text in self.driver.page_source
+
+    def is_url_contains(self, url_part):
+        return url_part in self.driver.current_url

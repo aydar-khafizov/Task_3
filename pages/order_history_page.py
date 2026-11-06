@@ -5,5 +5,8 @@ class OrderHistoryPage(BasePage):
     """Страница истории заказов (/account/order-history)."""
 
     def is_opened(self):
-        """Проверяем URL."""
-        return "/account/order-history" in self.driver.current_url
+        try:
+            self.wait_until_url_contains("/account/order-history")
+            return True
+        except Exception:
+            return False

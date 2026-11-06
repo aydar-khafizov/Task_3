@@ -24,8 +24,8 @@ class TestPasswordRecovery:
         forgot_page.enter_email(registered_user["email"])
         forgot_page.click_restore_button()
 
-        # Ждём, пока SPA переключит URL на /reset-password
-        forgot_page.wait_for_url("/reset-password")
+        # Ждём, пока SPA переключит URL на reset-password
+        forgot_page.wait_until_url_contains("/reset-password")
 
         reset_page = ResetPasswordPage(driver)
         assert reset_page.is_opened(), "Не открылась форма ввода нового пароля"
@@ -37,7 +37,7 @@ class TestPasswordRecovery:
         forgot_page.enter_email(registered_user["email"])
         forgot_page.click_restore_button()
 
-        forgot_page.wait_for_url("/reset-password")
+        forgot_page.wait_until_url_contains("/reset-password")
 
         reset_page = ResetPasswordPage(driver)
         reset_page.click_show_hide_password()

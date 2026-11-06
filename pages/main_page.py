@@ -1,20 +1,17 @@
-import time
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from config import BASE_URL
 from pages.base_page import BasePage
 from locators.main_page_locators import MainPageLocators
-
-BASE_URL = "https://qa-stellarburgers.education-services.ru"
 
 
 class MainPage(BasePage):
     def open(self):
         super().open(BASE_URL)
 
+    # --- Навигация ---
     def click_constructor(self):
         self.click(MainPageLocators.CONSTRUCTOR_BUTTON)
 
@@ -24,19 +21,34 @@ class MainPage(BasePage):
     def click_profile(self):
         self.click(MainPageLocators.PROFILE_BUTTON)
 
+    def is_constructor_opened(self):
+        url = self.get_current_url()
+        return url.endswith("/") and "qa-stellarburgers" in url
+
+    def is_order_feed_opened(self):
+        return "/feed" in self.get_current_url()
+
+    # --- Ингредиенты ---
     def click_ingredient(self, name):
         self.click(MainPageLocators.INGREDIENT_IMAGE(name))
 
+    def get_ingredient_counter(self, name):
+        """Возвращает значение счетчика. Если счетчика нет (0), возвращает 0."""
+        try:
+            text = self.get_text(MainPageLocators.INGREDIENT_COUNTER(name))
+            return int(text) if text.strip().isdigit() else 0
+        except Exception:
+            return 0
+
     def add_ingredient(self, name):
-        """Перетаскивает ингредиент в корзину. Для Firefox использует JS-события."""
+        """Перетаскивает ингредиент в корзину с ожиданием обновления счетчика."""
+        initial_counter = self.get_ingredient_counter(name)
+
         source = self.find_element(MainPageLocators.INGREDIENT_IMAGE(name))
-        target = self.find_element(
-            (By.XPATH, "//ul[contains(@class, 'BurgerConstructor_basket__list')] | //div[contains(@class, 'BurgerConstructor_basket')]")
-        )
-        
-        if self.driver.name.lower() == 'firefox':
-            # JS-эмуляция Drag-and-Drop для Firefox
-            self.driver.execute_script("""
+        target = self.find_element(MainPageLocators.BASKET_LIST)
+
+        if self.driver.name.lower() == "firefox":
+            self.execute_script("""
                 function simulateDragDrop(sourceNode, destinationNode) {
                     var EVENT_TYPES = { DRAG_END: 'dragend', DRAG_START: 'dragstart', DROP: 'drop' };
                     function createCustomEvent(type) {
@@ -65,37 +77,32 @@ class MainPage(BasePage):
                 simulateDragDrop(arguments[0], arguments[1]);
             """, source, target)
         else:
-            # Стандартный Drag-and-Drop для Chrome
             ActionChains(self.driver).drag_and_drop(source, target).perform()
-            
-        time.sleep(0.5)  # Даем React время обновить корзину
+
+        self.wait.until(lambda d: self.get_ingredient_counter(name) > initial_counter)
 
     def get_basket_items_count(self):
-        """Возвращает количество ингредиентов в корзине."""
-        elements = self.driver.find_elements(By.XPATH, "//ul[contains(@class, 'BurgerConstructor_basket__list')]/li")
-        return len(elements)
+        return len(self.find_elements(MainPageLocators.BASKET_ITEMS))
 
-    def get_ingredient_counter(self, name):
-        text = self.get_text(MainPageLocators.INGREDIENT_COUNTER(name))
-        return int(text) if text.strip().isdigit() else 0
-
+    # --- Модалка ингредиента ---
     def is_ingredient_modal_opened(self):
         return self.is_element_visible(MainPageLocators.INGREDIENT_MODAL_TITLE)
 
     def close_ingredient_modal(self):
         element = self.find_element(MainPageLocators.MODAL_CLOSE_BUTTON)
-        self.driver.execute_script("arguments[0].click();", element)
+        self.execute_script("arguments[0].click();", element)
 
     def is_ingredient_modal_closed(self):
         try:
-            self.wait.until(EC.invisibility_of_element_located(MainPageLocators.INGREDIENT_MODAL_TITLE))
+            self.wait_until_invisible(MainPageLocators.INGREDIENT_MODAL_TITLE, timeout=10)
             return True
         except Exception:
             return False
 
+    # --- Оформление заказа ---
     def click_place_order(self):
         element = self.find_element(MainPageLocators.PLACE_ORDER_BUTTON)
-        self.driver.execute_script("arguments[0].click();", element)
+        self.execute_script("arguments[0].click();", element)
 
     def is_order_modal_opened(self):
         return self.is_element_visible(MainPageLocators.ORDER_NUMBER_MODAL)
@@ -104,10 +111,13 @@ class MainPage(BasePage):
         return self.get_text(MainPageLocators.ORDER_NUMBER_MODAL)
 
     def wait_for_order_number(self):
-        """Смена номера заказа"""
-        WebDriverWait(self.driver, 30).until(lambda d: self.get_order_number() != "9999")
+
+        WebDriverWait(self.driver, 60).until(
+            lambda d: self.get_order_number() != "9999"
+        )
         return self.get_order_number()
 
     def close_order_modal(self):
-        self.driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.ESCAPE)
-        self.wait.until(EC.invisibility_of_element_located(MainPageLocators.ORDER_NUMBER_MODAL))
+        body = self.find_element(MainPageLocators.BODY)
+        body.send_keys(Keys.ESCAPE)
+        self.wait_until_invisible(MainPageLocators.ORDER_NUMBER_MODAL)

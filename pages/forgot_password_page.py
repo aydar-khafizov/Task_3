@@ -1,7 +1,6 @@
+from config import BASE_URL
 from pages.base_page import BasePage
 from locators.forgot_password_page_locators import ForgotPasswordPageLocators
-
-BASE_URL = "https://qa-stellarburgers.education-services.ru"
 
 
 class ForgotPasswordPage(BasePage):

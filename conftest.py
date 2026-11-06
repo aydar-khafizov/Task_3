@@ -1,19 +1,15 @@
 import os
-import time
 
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
+from pages.login_page import LoginPage
 from utils.api_client import ApiClient
 from utils.data_generator import generate_random_email, generate_random_string
 
 HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
-BASE_URL = "https://qa-stellarburgers.education-services.ru"
 
 
 def get_driver(browser_name: str):
@@ -46,13 +42,16 @@ def api_client():
 
 @pytest.fixture
 def registered_user(api_client):
-    """Создаёт уникального пользователя через API и удаляет его после теста."""
     email = generate_random_email()
     password = generate_random_string()
     name = generate_random_string()
 
     response = api_client.register_user(email, password, name)
-    assert response.status_code == 200, f"Ошибка API: {response.text}"
+    
+    
+    if response.status_code != 200:
+        pytest.fail(f"Не удалось создать пользователя в фикстуре. Ошибка API: {response.text}")
+        
     data = response.json()
 
     yield {
@@ -71,22 +70,8 @@ def registered_user(api_client):
 @pytest.fixture
 def authorized_user(driver, registered_user):
     """Логинит созданного через API пользователя через UI."""
-    driver.get(f"{BASE_URL}/login")
-
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located((By.XPATH, "//input[@name='name']"))
-    )
-
-    driver.find_element(By.XPATH, "//input[@name='name']").send_keys(registered_user["email"])
-    driver.find_element(By.XPATH, "//input[@name='Пароль']").send_keys(registered_user["password"])
-
-    time.sleep(1) # Даем React время
-
-    driver.find_element(By.XPATH, "//button[text()='Войти']").click()
-
-    # Ждем появления токена
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return window.localStorage.getItem('accessToken');") is not None
-    )
-    
+    login_page = LoginPage(driver)
+    login_page.open()
+    login_page.login(registered_user["email"], registered_user["password"])
+    login_page.wait_until_url_not_contains("/login")
     return registered_user

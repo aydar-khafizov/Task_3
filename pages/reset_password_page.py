@@ -1,7 +1,6 @@
+from config import BASE_URL
 from pages.base_page import BasePage
 from locators.reset_password_page_locators import ResetPasswordPageLocators
-
-BASE_URL = "https://qa-stellarburgers.education-services.ru"
 
 
 class ResetPasswordPage(BasePage):
@@ -17,5 +16,4 @@ class ResetPasswordPage(BasePage):
         return self.is_element_present(ResetPasswordPageLocators.PASSWORD_INPUT)
 
     def is_password_field_active(self):
-        """Активно ли поле пароля (подсвечено после клика по глазику)."""
         return self.is_element_present(ResetPasswordPageLocators.ACTIVE_PASSWORD_FIELD)
