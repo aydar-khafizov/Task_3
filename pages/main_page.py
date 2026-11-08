@@ -1,6 +1,5 @@
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 
 from config import BASE_URL
 from pages.base_page import BasePage
@@ -11,7 +10,6 @@ class MainPage(BasePage):
     def open(self):
         super().open(BASE_URL)
 
-    # --- Навигация ---
     def click_constructor(self):
         self.click(MainPageLocators.CONSTRUCTOR_BUTTON)
 
@@ -28,12 +26,10 @@ class MainPage(BasePage):
     def is_order_feed_opened(self):
         return "/feed" in self.get_current_url()
 
-    # --- Ингредиенты ---
     def click_ingredient(self, name):
         self.click(MainPageLocators.INGREDIENT_IMAGE(name))
 
     def get_ingredient_counter(self, name):
-        """Возвращает значение счетчика. Если счетчика нет (0), возвращает 0."""
         try:
             text = self.get_text(MainPageLocators.INGREDIENT_COUNTER(name))
             return int(text) if text.strip().isdigit() else 0
@@ -41,7 +37,6 @@ class MainPage(BasePage):
             return 0
 
     def add_ingredient(self, name):
-        """Перетаскивает ингредиент в корзину с ожиданием обновления счетчика."""
         initial_counter = self.get_ingredient_counter(name)
 
         source = self.find_element(MainPageLocators.INGREDIENT_IMAGE(name))
@@ -79,12 +74,11 @@ class MainPage(BasePage):
         else:
             ActionChains(self.driver).drag_and_drop(source, target).perform()
 
-        self.wait.until(lambda d: self.get_ingredient_counter(name) > initial_counter)
+        self.wait_until(lambda d: self.get_ingredient_counter(name) > initial_counter)
 
     def get_basket_items_count(self):
         return len(self.find_elements(MainPageLocators.BASKET_ITEMS))
 
-    # --- Модалка ингредиента ---
     def is_ingredient_modal_opened(self):
         return self.is_element_visible(MainPageLocators.INGREDIENT_MODAL_TITLE)
 
@@ -99,7 +93,6 @@ class MainPage(BasePage):
         except Exception:
             return False
 
-    # --- Оформление заказа ---
     def click_place_order(self):
         element = self.find_element(MainPageLocators.PLACE_ORDER_BUTTON)
         self.execute_script("arguments[0].click();", element)
@@ -111,10 +104,8 @@ class MainPage(BasePage):
         return self.get_text(MainPageLocators.ORDER_NUMBER_MODAL)
 
     def wait_for_order_number(self):
-
-        WebDriverWait(self.driver, 60).until(
-            lambda d: self.get_order_number() != "9999"
-        )
+        # Используем универсальный метод wait_until
+        self.wait_until(lambda d: self.get_order_number() != "9999", timeout=60)
         return self.get_order_number()
 
     def close_order_modal(self):

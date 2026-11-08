@@ -1,6 +1,4 @@
 from selenium.common.exceptions import StaleElementReferenceException
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
 from config import BASE_URL
 from pages.base_page import BasePage
@@ -24,18 +22,16 @@ class OrderFeedPage(BasePage):
         return int(text)
 
     def wait_for_total_counter_more_than(self, initial_count, timeout=15):
-        WebDriverWait(self.driver, timeout).until(
-            lambda d: self.get_total_orders_count() > initial_count
-        )
+        # Используем wait_until из BasePage
+        self.wait_until(lambda d: self.get_total_orders_count() > initial_count, timeout)
 
     def wait_for_today_counter_more_than(self, initial_count, timeout=15):
-        WebDriverWait(self.driver, timeout).until(
-            lambda d: self.get_today_orders_count() > initial_count
-        )
+        # Используем wait_until из BasePage
+        self.wait_until(lambda d: self.get_today_orders_count() > initial_count, timeout)
 
     def click_first_order(self):
-        element = self.wait.until(EC.element_to_be_clickable(OrderFeedLocators.ORDER_CARD))
-        self.execute_script("arguments[0].click();", element)
+        # Используем click_js из BasePage
+        self.click_js(OrderFeedLocators.ORDER_CARD)
 
     def is_order_modal_opened(self):
         return self.is_element_visible(OrderFeedLocators.ORDER_MODAL)
@@ -45,9 +41,6 @@ class OrderFeedPage(BasePage):
         return text.replace("#", "").strip()
 
     def get_in_progress_orders(self):
-        """
-        Возвращает список номеров из раздела «В работе».
-        """
         result = []
         elements = self.find_elements(OrderFeedLocators.IN_PROGRESS_LIST)
         for el in elements:
@@ -60,11 +53,11 @@ class OrderFeedPage(BasePage):
         return result
 
     def wait_for_order_in_progress(self, order_number, timeout=30):
-        """Ждет до 30 секунд появления заказа в разделе «В работе»."""
         def check(driver):
             try:
                 return order_number in self.get_in_progress_orders()
             except StaleElementReferenceException:
                 return False
 
-        WebDriverWait(self.driver, timeout).until(check)
+        # Используем wait_until из BasePage
+        self.wait_until(check, timeout)
